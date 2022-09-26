@@ -43,24 +43,6 @@ def step(state, action, environment_args):
                  state)
     return state
 
-# Not currently implemented for ASEP
-#def periodic_original_sample(state, key, params):
-#    key, subkey = random.split(key)
-#    L = jnp.size(state)
-#    bond_index = random.randint(subkey, (1,), 0, L)[0]
-#    action = cond(state[bond_index],
-#                 lambda s: ((s + 1) % L),
-#                 lambda s: L,
-#                 site_index)
-#    probability = cond(action == L,
-#                       lambda s: 1 - jnp.sum(s)/L,
-#                       lambda s: 1/L,
-#                       state)
-#    return action, key, probability
-#
-#def periodic_original_log_prob(state, action, params):
-#    return 0.0
-
 def activity_observation(
         observation_state, step, learning_rate,
         prior_state, policy_params, value_params, average_reward,
