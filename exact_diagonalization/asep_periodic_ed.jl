@@ -33,7 +33,7 @@ for param in params
     @time scgfs[i, j, k] = log(real(last(eigvals(mastop))))
 end
 
-h5open("periodic_asep_ED_2.05_to_3.0.hdf5", "w") do file
+h5open("periodic_asep_ED_-3.0_to_3.0.hdf5", "w") do file
     write(file, "data", scgfs)
     write(file, "sizes", collect(sizes))
     write(file, "biases", collect(biases))
