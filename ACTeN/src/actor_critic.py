@@ -13,6 +13,7 @@ def default_obs(
     prior_value, current_value, reward, td_error,
     environment_args
     ):
+    """Default observation function, simply returns the current average reward."""
     observation_state = observation_state.at[0].set(average_reward)
     return observation_state
 
@@ -27,6 +28,44 @@ def init_actor_critic(
     reward_lr,
     observation_func = default_obs
     ):
+    """Used to create a closure which performs a single step of an Actor-Critic algorithm.
+    
+    Wraps the learning rates, approximation functions, environment functions and 
+    observation function.
+    
+    arguments:
+        reward_func:
+            the reward function of the environment
+        environment_step:
+            updates the state according to the current state and the action selected
+        environment_args:
+            contains any parameters used by the environment
+        value:
+            the value function approximation, takes the state as its first argument and 
+            the parameters as its second. Must return a single float or single 
+            element float array. Must be differentiable with respect to second argument.
+        value_lr:
+            the learning rate for updates of the value approximation parameters
+        policy:
+            the policy function approximation, takes the state, PRNG key and parameters 
+            as its three arguments in that order. Must return the following signature:
+
+                (log_probability_of_selected_action, (action_selected, new_prng_key))
+
+            First return must be differentiable with respect to third argument
+        policy_lr:
+            the learning rate for updates of the policy approximation parameters
+        reward_lr:
+            the learning rate for the average_reward
+        observation_func: 
+            the function used to calculate observations. Takes all variables present at 
+            the end of an algorithm step to update the observation state, see source for 
+            details.
+    return:
+        function which takes two arguments
+            arg_1: the current step of the training
+            arg_2: the current algorithm state
+    """
     policy_grad = value_and_grad(policy, argnums=2, has_aux=True)
     value_grad = value_and_grad(value, argnums=1)
     def algorithm_step(step, val):
@@ -53,6 +92,7 @@ def init_actor_critic(
     return algorithm_step
 
 def _init_train_period(period, algorithm_step):
+    """Used to create a closure which performs training between two observation saves."""
     def train_period(step, val):
         (state, key, policy_params, value_params,
          average_reward, observation_state, observations) = val
@@ -69,6 +109,47 @@ def _init_train_period(period, algorithm_step):
 def train(state, key, value_params, policy_params, algorithm_step,
           saves, initial_observations=jnp.array([0.0]), save_period=1,
           average_reward=0.0):
+    """Trains the approximations.
+    
+    Note this is not general, it is tailored to the single-step, sequential Actor-Critic
+    algorithm constructed using the init_actor_critic function above.
+
+    arguments:
+        state: 
+            the initial state of the system
+        key: 
+            the key used to generate random numbers
+        value_params: 
+            parameters for the value function approximation
+        policy_params: 
+            parameters for the policy approximations
+        algorithm_step: 
+            a function performing a single step of the training algorithm
+        saves: 
+            how many times observations are saved
+        initial_observations: 
+            an array used to initialize the observation state and buffer
+        save_period: 
+            how many training steps are performed between observation saves
+        average_reward: 
+            the initial value used for the average_reward
+    
+    returns:
+        state: 
+            the final state of the system after training
+        key: 
+            the final key after use for random number generation
+        value_params: 
+            the trained value approximation parameters
+        policy_params: 
+            the train policy approximation parameters
+        average_reward: 
+            the estimate of the average reward at the end of training
+        observations: 
+            an array of observations saved throughout training
+
+    To JIT compile, arguments 4, 5 and 7 must be static.
+    """
     observation_state = jnp.array(initial_observations)
     observations = jnp.zeros((saves, jnp.shape(initial_observations)[0]))
     observations = observations.at[0,:].set(initial_observations)

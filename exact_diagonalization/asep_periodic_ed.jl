@@ -29,7 +29,7 @@ scgfs = zeros(length(sizes), length(biases), length(rate_diff))
 for param in params
     (i, N), (j, s), (k, p) = param
     println(getindex.(param, 1), " ", getindex.(param, 2))
-    mastop = Matrix(particle_asep_model(N, N ÷ 2, p, s, SparseMatrixCSC))
+    mastop = Matrix(asep_model(N, N ÷ 2, p, s, SparseMatrixCSC))
     @time scgfs[i, j, k] = log(real(last(eigvals(mastop))))
 end
 
