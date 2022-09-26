@@ -1,11 +1,12 @@
 import jax.numpy as jnp
-from jax import grad, jit, vmap
+from jax import grad, jit
 from jax import random
 from jax.lax import cond, fori_loop
 from jax.config import config
 config.update("jax_enable_x64", True)
 
 def periodic_reward_func(state, action, environment_args):
+    """Return the reward for the activity biased East model with periodic boundaries."""
     reward = cond(action == environment_args["L"],
                   lambda x: jnp.log(1 - jnp.sum(x)/environment_args["L"]),
                   lambda x: -environment_args["s"] - jnp.log(environment_args["L"]),
@@ -13,10 +14,12 @@ def periodic_reward_func(state, action, environment_args):
     return reward
 
 def _flip(state, site):
+    """Flip the spin in state at site."""
     state = state.at[site].set(-(state[site]-1))
     return state
 
 def step(state, action, environment_args):
+    """Given the action, either flips the state or performs no flip."""
     state = cond(action == environment_args["L"],
                  lambda x: x,
                  lambda x: _flip(x, action),
@@ -24,6 +27,7 @@ def step(state, action, environment_args):
     return state
 
 def periodic_original_sample(state, key, params):
+    """Samples a step of the original dynamics transition probabilities."""
     key, subkey = random.split(key)
     L = jnp.size(state)
     site_index = random.randint(subkey, (1,), 0, L)[0]
@@ -37,15 +41,13 @@ def periodic_original_sample(state, key, params):
                        state)
     return action, key, probability
 
-def periodic_original_log_prob(state, action, params):
-    return 0.0
-
 def activity_observation(
         observation_state, step, learning_rate,
         prior_state, policy_params, value_params, average_reward,
         log_prob, action, state, pol_grad, val_grad,
         prior_value, current_value, reward, td_error,
         environment_args):
+    """Updates a running average of the activity."""
     activity = cond(action == environment_args["L"], lambda: 0, lambda: 1)
     observation_state += learning_rate * (activity - observation_state)
     return observation_state
@@ -56,6 +58,7 @@ def kl_divergence_observation(
         log_prob, action, state, pol_grad, val_grad,
         prior_value, current_value, reward, td_error,
         environment_args):
+    """Updates a running average of the KL divergence between original and approx."""
     kl_div = cond(action == environment_args["L"],
                   lambda x: jnp.log(1 - jnp.sum(x)/environment_args["L"]),
                   lambda x: -jnp.log(environment_args["L"]),
@@ -64,6 +67,7 @@ def kl_divergence_observation(
     return observation_state
 
 def init_obs_func(activity_learning_rate, kl_div_learning_rate):
+    """Creates observation function for activity and KL divergence of the East model."""
     def obs_func(
         observation_state, step,
         prior_state, policy_params, value_params, average_reward,

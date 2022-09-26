@@ -1,5 +1,5 @@
 import jax.numpy as jnp
-from jax import grad, jit, vmap, value_and_grad
+from jax import grad, jit, value_and_grad
 from jax import random
 from jax.lax import cond, fori_loop
 from numpy import average

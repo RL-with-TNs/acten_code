@@ -20,9 +20,9 @@ function asep_model(L, N, p, s, T=identity)
     return proj_mast_op + I(size(proj_mast_op)[1])
 end
 
-sizes = [2 * i for i = 2:7]
+sizes = 2 * (2:7)
 biases = -3.0:0.05:3.0
-rate_diff = [0.1 * i for i = 5:10]
+rate_diff = 0.1 * (5:10)
 params = Iterators.product(enumerate(sizes), enumerate(biases), enumerate(rate_diff))
 
 scgfs = zeros(length(sizes), length(biases), length(rate_diff))
@@ -35,7 +35,7 @@ end
 
 h5open("periodic_asep_ED_2.05_to_3.0.hdf5", "w") do file
     write(file, "data", scgfs)
-    write(file, "sizes", sizes)
+    write(file, "sizes", collect(sizes))
     write(file, "biases", collect(biases))
-    write(file, "transition_rates", rate_diff)
+    write(file, "transition_rates", collect(rate_diff))
 end

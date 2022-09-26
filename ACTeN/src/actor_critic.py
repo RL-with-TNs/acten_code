@@ -1,5 +1,5 @@
 import jax.numpy as jnp
-from jax import grad, jit, vmap, value_and_grad
+from jax import grad, jit, value_and_grad
 from jax import random
 from jax.lax import cond, fori_loop
 from numpy import average
@@ -37,9 +37,10 @@ def init_actor_critic(
         reward_func:
             the reward function of the environment
         environment_step:
-            updates the state according to the current state and the action selected
+            function implementing how the environments updates the state given the 
+            current state and the action selected
         environment_args:
-            contains any parameters used by the environment
+            contains any parameters used by the environment functions
         value:
             the value function approximation, takes the state as its first argument and 
             the parameters as its second. Must return a single float or single 
@@ -62,9 +63,13 @@ def init_actor_critic(
             the end of an algorithm step to update the observation state, see source for 
             details.
     return:
-        function which takes two arguments
-            arg_1: the current step of the training
-            arg_2: the current algorithm state
+        function which takes two arguments and returns the new algorithm state
+            arg_1: 
+                the current step of the training
+            arg_2: 
+                the current algorithm state
+            return:
+                the new algorithm state
     """
     policy_grad = value_and_grad(policy, argnums=2, has_aux=True)
     value_grad = value_and_grad(value, argnums=1)
