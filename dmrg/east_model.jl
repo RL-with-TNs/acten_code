@@ -5,9 +5,14 @@ using HDF5
 import ITensors.op
 op(::OpName"I", ::SiteType"S=1/2") = [1.0 0.0; 0.0 1.0]
 
-svals = collect(0.0:0.0005:0.015)
-Ns = vcat([4, 7], collect(10:5:30), [40, 50])
-Ns = [30, 40, 50]
+zoom = false
+if zoom
+    svals = collect(0.0:0.0005:0.015)
+    Ns = [30, 40, 50]
+else
+    svals = vcat(-0.1:0.025:0.0, 0.0025:0.0025:0.05, 0.075:0.025:0.2)
+    Ns = vcat([4, 7], collect(10:5:30), [40, 50])
+end
 periodicdata = zeros(length(Ns), length(svals))
 periodic = true
 
@@ -51,11 +56,21 @@ periodic = true
         periodicdata[i, k] = log(-energy)
     end
 end
-if periodic
-    h5open("periodic_dmrg_data_zoom.hdf5", "cw") do file
-        write(file, "data", periodicdata)
-        write(file, "biases", svals)
-        write(file, "sizes", Ns)
+
+if zoom
+    if periodic
+        h5open("periodic_dmrg_data_zoom.hdf5", "cw") do file
+            write(file, "data", periodicdata)
+            write(file, "biases", svals)
+            write(file, "sizes", Ns)
+        end
+    end
+else
+    if periodic
+        h5open("periodic_dmrg_data.hdf5", "cw") do file
+            write(file, "data", periodicdata)
+            write(file, "biases", svals)
+            write(file, "sizes", Ns)
+        end
     end
 end
-
