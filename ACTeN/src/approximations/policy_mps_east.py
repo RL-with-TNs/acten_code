@@ -1,19 +1,31 @@
 import jax.numpy as jnp
-from jax import grad, jit, vmap, value_and_grad
 from jax import random
-from jax.lax import cond, fori_loop, scan
+from jax.lax import cond, scan
 from jax.config import config
 config.update("jax_enable_x64", True)
 
-def _step_to_right(carry, input):
-    """performs a step to the right for the east-model. If the state to the left is up, the current site can flip.
+def policy(state, key, weights):
+    """Sample the L+1 actions of the east model
 
     Args:
-        carry (_type_): _description_
-        input (_type_): _description_
+        state (_type_): the vector s = (s_1, s_2, ..., s_L) of s_i \in {0,1}
+        key : the rng key
+        weights (array): the weights of the policy, a single tensor of shape (d, d, chi, chi)
 
     Returns:
-        _type_: _description_
+        log_prob, (action, key): the log_prob of the sampled action along with the action and key as auxilary returns.
+    """
+    tensor = weights
+    environments = _get_environments_east_model(state, tensor)
+    probs, _ = _get_probs(environments)
+    key, subkey = random.split(key)
+    action = random.choice(subkey, jnp.array(list(range(len(state)+1))), p = probs)
+    probability = probs[action]
+    log_prob = jnp.log(probability)
+    return log_prob, (action, key)
+
+def _step_to_right(carry, input):
+    """performs a step to the right for the east-model. If the state to the left is up, the current site can flip.
     """
 
     weights, mat, environments, state = carry
@@ -55,13 +67,6 @@ def _step_to_left(carry, input):
 
 def _get_environments_east_model(state, weights):
     """form the environments for an action-state MPS subject to the east model dynamics (left facilitation and max single flip). Impossible actions are represented by a zero-matrix environment.
-
-    Args:
-        state (_type_): _description_
-        weights (_type_): _description_
-
-    Returns:
-        _type_: _description_
     """
 
     environments = jnp.zeros((len(state)+1,weights.shape[2],weights.shape[3]))
@@ -102,48 +107,3 @@ def _get_probs(environments):
     factors_squared = jnp.square(factors)
     probs = factors_squared/jnp.sum(factors_squared)
     return probs, factors
-
-def policy_sample(state, key, weights):
-    environments = _get_environments_east_model(state, weights)
-    probs, _ = _get_probs(environments)
-    key, subkey = random.split(key)
-    action = random.choice(subkey, jnp.array(list(range(len(state)+1))), p = probs) #Use shape?
-    probability = probs[action]
-    return action, key, probability
-
-# def policy(state, key, weights):
-#     chi_policy = weights.shape[-1]
-#     tensor = (jnp.array([[jnp.eye(chi_policy), jnp.eye(chi_policy)],
-# 							 [jnp.eye(chi_policy), jnp.eye(chi_policy)]]) + weights)
-#     environments = _get_environments_east_model(state, tensor)
-#     probs, _ = _get_probs(environments)
-#     key, subkey = random.split(key)
-#     action = random.choice(subkey, jnp.array(list(range(len(state)+1))), p = probs) #Use shape?
-#     probability = probs[action]
-#     log_prob = jnp.log(probability)
-#     return log_prob, (action, key)
-
-def policy(state, key, weights):
-    # chi_policy = weights.shape[-1]
-    # tensor = (jnp.array([[jnp.eye(chi_policy), jnp.eye(chi_policy)],
-	# 						 [jnp.eye(chi_policy), jnp.eye(chi_policy)]]) + weights)
-    tensor = weights
-    environments = _get_environments_east_model(state, tensor)
-    probs, _ = _get_probs(environments)
-    key, subkey = random.split(key)
-    action = random.choice(subkey, jnp.array(list(range(len(state)+1))), p = probs)
-    probability = probs[action]
-    log_prob = jnp.log(probability)
-    return log_prob, (action, key)
-
-def policy_probs(state, weights):
-    environments = _get_environments_east_model(state, weights)
-    probs, _ = _get_probs(environments)
-    return probs
-
-def policy_log_prob(state, action, weights):
-    environments = _get_environments_east_model(state, weights)
-    probs, _ = _get_probs(environments)
-    probability = probs[action]
-    log_prob = jnp.log(probability)
-    return log_prob

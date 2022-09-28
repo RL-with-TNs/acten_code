@@ -4,17 +4,30 @@ from jax.lax import cond, scan
 from jax.config import config
 config.update("jax_enable_x64", True)
 
+def policy(state, key, weights):
+    """Sample the L+1 actions of the ASEP.
+
+    Args:
+        state (_type_): the vector s = (s_1, s_2, ..., s_L) of s_i \in {0,1}
+        key : the rng key
+        weights (array): the weights of the policy, a single tensor of shape (d, d, chi, chi)
+
+    Returns:
+        log_prob, (action, key): the log_prob of the sampled action along with the action and key as auxilary returns.
+    """
+    tensor = weights
+    environments = _get_environments_asep(state, tensor)
+    probs, _ = _get_probs(environments)
+    key, subkey = random.split(key)
+    action = random.choice(subkey, jnp.array(list(range(len(state)+1))), p = probs)
+    probability = probs[action]
+    log_prob = jnp.log(probability)
+    return log_prob, (action, key)
+
 def _step_to_right(carry, input):
     """performs a step to the right for the asep. If the current state and the next one are in 01 or 10, can flip both.
     If the local constraint condition is true, then the left-environment for the site is created and stored.
     Until reach a site where the constraint is satisfied, the environment just consists of no-flips.
-
-    Args:
-        carry (_type_): _description_
-        input (_type_): _description_
-
-    Returns:
-        _type_: _description_
     """
 
     weights, mat, environments, state = carry
@@ -41,12 +54,6 @@ def _step_to_right(carry, input):
 def _add_zero_mat_step_to_right(carry, input):
     """multiples on the zero-mat, A0, for the current site_idx (the input).
         Used in a scan the final output mat will be a product of all zeros for the chosen inputs.
-    Args:
-        carry (_type_): _description_
-        input (_type_): _description_
-
-    Returns:
-        _type_: _description_
     """
 
     weights, mat, environments, state = carry
@@ -77,13 +84,6 @@ def _step_to_left(carry, input):
 def _get_environments_asep(state, weights):
     """form the environments for an action-state MPS subject to the asep dynamics (left/right particle hops).
     Impossible actions are represented by a zero-matrix environment.
-
-    Args:
-        state (_type_): _description_
-        weights (_type_): _description_
-
-    Returns:
-        _type_: _description_
     """
 
     def cond_no_flip_possible(state):
@@ -154,33 +154,3 @@ def _get_probs(environments):
     factors_squared = jnp.square(factors)
     probs = factors_squared/jnp.sum(factors_squared)
     return probs, factors
-
-def policy_sample(state, key, weights):
-    environments = _get_environments_asep(state, weights)
-    probs, factors = _get_probs(environments)
-    key, subkey = random.split(key)
-    action = random.choice(subkey, jnp.array(list(range(len(state)+1))), p = probs) #Use shape?
-    probability = probs[action]
-    return action, key, probability
-
-def policy(state, key, weights):
-    tensor = weights
-    environments = _get_environments_asep(state, tensor)
-    probs, _ = _get_probs(environments)
-    key, subkey = random.split(key)
-    action = random.choice(subkey, jnp.array(list(range(len(state)+1))), p = probs)
-    probability = probs[action]
-    log_prob = jnp.log(probability)
-    return log_prob, (action, key)
-
-def policy_log_prob(state, action, weights):
-    environments = _get_environments_asep(state, weights)
-    probs, factors = _get_probs(environments)
-    probability = probs[action]
-    log_prob = jnp.log(probability)
-    return log_prob
-
-def policy_probs(state, weights):
-    environments = _get_environments_asep(state, weights)
-    probs, _ = _get_probs(environments)
-    return probs
