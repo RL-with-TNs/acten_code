@@ -1,5 +1,5 @@
 # ACTeN, Actor Critic with Tensor Networks
-This repository contains some of the code used in producing results for the paper introducing ACTeN (add ArXiv link here).
+This repository contains some of the code used in producing results for the paper introducing ACTeN (https://arxiv.org/abs/2209.14089).
 
 Specifically:
 * exact_diagonalization contains code used to produce the exact results for the ASEP model.
